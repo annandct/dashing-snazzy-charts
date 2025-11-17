@@ -1,0 +1,414 @@
+---
+always_allow_html: true
+output:
+  rmarkdown::github_document: default
+  always_allow_html: default
+  output:
+  md_document:
+    variant: gfm
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../") })
+title: "data_generation"
+author: "CTA"
+date: "2025-09-26"
+---
+
+```{r setup, include=FALSE}
+base_dir <- "../" # where output should default to
+base_url <- "" # keep as is
+fig_path <- "plot_images/" # where image output should go
+
+knitr::opts_knit$set(base.dir = base_dir)
+knitr::opts_chunk$set(fig.path = fig_path,
+                      cache.path = '../cache/',  #log files go here
+                      echo = TRUE,
+                      message=FALSE, 
+                      warning=FALSE,
+                      cache = TRUE) 
+```  
+
+
+```{r}
+# Load necessary libraries for data manipulation and date handling.
+# If you don't have these installed, run: install.packages(c("dplyr", "lubridate"))
+library(dplyr)
+library(lubridate)
+library(kableExtra)
+library(ggplot2)
+```
+
+## toy-data
+```{r}
+set.seed(8888)
+
+# Create WIDE format data (40 rows max)
+df_wide <- data.frame(
+  "id" = 1:100,
+  "num_data" = round(rnorm(100, mean = 50, sd = 15), 0),
+  "feature_weather" = sample(c("Sunny", "Cloudy", "Rainy"), 100, replace = TRUE),
+  "feature_state" = sample(state.abb[1:3], 100, replace = TRUE))
+
+## Add colors
+blue_to_grey_palette <- colorRampPalette(c("#12436D", "#BFBFBF"))
+red_to_grey_palette <- colorRampPalette(c("#C21807", "#BFBFBF"))
+
+df_wide <- df_wide %>%
+  mutate( "blue_hex_codes" = blue_to_grey_palette(100),
+          "red_hex_codes" = red_to_grey_palette(100))
+
+#dim(df_wide)
+#glimpse(df_wide)
+df_wide %>% kable(
+  caption = "Wide Data - 100 Rows by 6 Columns") %>%
+  kable_styling(full_width = F, stripe_color = "grey")
+```
+
+## Visualizing the Wide Format
+```{r}
+df_wide %>% 
+  ggplot(aes(y=id, fill=1))+ # width=1, height=1)) +
+  geom_tile(aes(x=1, fill = num_data))+
+  geom_tile(aes(x=2), fill = df_wide$red_hex_codes)+
+  geom_tile(aes(x=3), fill = df_wide$blue_hex_codes)+
+  theme(legend.position = "none")+
+  scale_y_reverse()+
+  scale_x_continuous(breaks = c(1,2,3),
+                     labels = c("num_data", "red_hex_codes", "blue_hex_codes"))+
+  labs(title = "Typical Data Format",
+       x = "Colors for Vis",
+       y = "'id' = Row Number Top to Bottom") +
+  theme_minimal()
+```
+
+## Convert to LONG format
+- Multiplies the number of ROWS by the number of UNIQUE ELEMENTS in the SELECT FEATURES
+```{r}
+# in R tables - you can't have number/string data - and since I don't want to make this a LIST (yet...) I am converting the nums to strings
+df_long <- df_wide %>%
+  mutate(num_data = as.character(num_data)) %>%
+  pivot_longer(
+    cols = c(num_data, feature_weather, feature_state),
+    names_to = "feature",
+    values_to = "value"
+  )
+
+#dim(df_long)
+df_long %>% kable(
+  caption = "Long Data - 300 Rows by 5 Columns") %>%
+  kable_styling(full_width = F, stripe_color = "grey")
+
+#head(df_long)
+```
+
+## Visualizing the LONG format
+
+```{r}
+plot_long <- 
+  df_long %>%
+  slice(1:30) %>%
+  ggplot(aes(x=1, 
+             y=1:30, #nrow(df_long), 
+             fill=id))+ # width=1, height=1)) +
+  geom_tile()+
+  #facet_wrap(~feature)+
+  scale_y_reverse()+
+  #scale_x_discrete()+
+  labs(title = "Long Data Format",
+       subtitle = "ID(triplicates) = Color",
+       y = "Row Number") +
+  theme_minimal()
+  theme(legend.position = "none")
+
+plotly::ggplotly(plot_long)
+```
+
+
+```{r}
+#%>%
+  mutate(
+    id = paste0("ID", id),  # Add unique ids for clarity
+    color = ifelse(value > 45, "Green", "Blue")  # Recalculated for consistency
+  )
+
+# Display sample to show differences
+cat("WIDE Format (40 rows):\n")
+print(head(df_wide, n = 3))
+
+cat("\nLONG Format (80 rows):\n")
+print(head(df_long, n = 3))
+```
+
+
+
+## CE SHOP DATA CREATION
+
+```{r}
+
+# --- Data Generation (User-Provided) ---
+start_date <- as.Date("2022-01-01")
+end_date <- as.Date("2025-09-26")
+course_names <- c(
+  "75-Hr. PA Sales Pre-Licensing Course Only Package",
+  "20-Hour Mortage Broker Education",
+  "Appraisers State Exam",
+  "Outsmartimg the 20215 Housing Market",
+  "Real Estate Introduction",
+  "Rental vs Sales - Defining Your Path",
+  "Transition from Home Real Estate to Commerical Real Estate"
+)
+promotions <- c("30% Off", "40% Off", "50% Off", "None")
+promo_probabilities <- c(0.25, 0.20, 0.15, 0.40)
+platforms <- c("Email", "LinkedIn", "Facebook", "Conference", "Direct")
+platform_probabilities <- c(0.30, 0.20, 0.20, 0.10, 0.20)
+date_sequence <- seq(from = start_date, to = end_date, by = "day")
+number_of_records <- length(date_sequence) * 5
+
+sales_data <- tibble(
+  Date = sample(date_sequence, number_of_records, replace = TRUE),
+  Product_Name = sample(course_names, number_of_records, replace = TRUE),
+  Promotion_Applied = sample(promotions, number_of_records, replace = TRUE, prob = promo_probabilities),
+  Professions = sample(c("Real Estate Agent", "Mortgage Broker", "Appraiser", "Other"), number_of_records, replace = TRUE),
+  Line_of_Business = sample(c("Commerical", "Residential", "Private", "Government", "Other"), number_of_records, replace = TRUE),
+  Traffic_on_Site = sample(100:1000, number_of_records, replace = TRUE),
+  Status = sample(c("Pre-Licensing", "Continuing Education", "Other"), prob = c(.45, .45, .1), number_of_records, replace = TRUE),
+  Campaign_Platform = sample(platforms, number_of_records, replace = TRUE, prob = platform_probabilities),
+  Tactic_Testing = sample(c("A", "B", "C"), number_of_records, replace = TRUE)
+) %>%
+  mutate(
+    Promotion_Rate = ifelse(Promotion_Applied == "None", 0,
+                            as.numeric(gsub(x = Promotion_Applied, pattern = "% Off", "")) / 100
+    ),
+    Course_Cost = case_when(
+      Product_Name == "75-Hr. PA Sales Pre-Licensing Course Only Package" ~ 7500,
+      Product_Name == "20-Hour Mortage Broker Education" ~ 2000,
+      Product_Name == "Appraisers State Exam" ~ 750,
+      Product_Name == "Outsmartimg the 20215 Housing Market" ~ 1000,
+      Product_Name == "Real Estate Introduction" ~ 1500,
+      Product_Name == "Rental vs Sales - Defining Your Path" ~ 200,
+      Product_Name == "Transition from Home Real Estate to Commerical Real Estate" ~ 750,
+      TRUE ~ 0
+    ),
+    Cost_Yeild = round(Course_Cost * Promotion_Rate, 2),
+    Revenue = Course_Cost * (1 - Promotion_Rate)
+  )
+
+```
+
+
+```{r}
+## SAVING THEME ELEMENTS FOR PREPROCESSING
+# --- Themeing (User-Provided) ---
+.base_colors <- list(
+  "primary_blues" = c("#005287", "#00354e", "#0278af", "#5a5c5d", "#c1c2c4"),
+  "primary_reds" = c("#c42032", "#850101", "#6D2B2C", "#614041", "#555556", "#292323"),
+  "combined_colors" = c("#005287", "#c42032", "#00354e", "#850101", "#0278af", "#6D2B2C", "#c1c2c4", "#5a5c5d", "#685786", "#ffcc05", "#0278af", "#00354e")
+)
+
+theme_cta_resize <- function() {
+  theme_minimal(base_family = "Arial") +
+    theme(
+      plot.title = element_text(family = "Arial", face = "bold", size = rel(1.25), color = "#005287", hjust = 0.5, margin = margin(b = 10)),
+      plot.subtitle = element_text(family = "Arial", size = rel(1), color = "#5a5c5d", hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(family = "Arial", size = rel(.9), color = "#005287", face = "bold"),
+      axis.text = element_text(family = "Arial", size = rel(.75), color = "#5a5c5d"),
+      legend.title = element_text(family = "Arial", size = rel(.75), color = "#005287", face = "bold"),
+      legend.text = element_text(family = "Arial", size = rel(.65), color = "#5a5c5d"),
+      panel.background = element_rect(fill = "#ffffff", color = NA),
+      panel.grid.major = element_line(color = "#c1c2c4"),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#0278af", color = "#005287"),
+      strip.text = element_text(family = "Arial", size = rel(.9), color = "#ffffff", face = "bold")
+    )
+}
+
+current_theme = list(
+  base_colors = .base_colors,
+  theme_cta_resize = theme_cta_resize
+)
+```
+
+
+## preprocessing
+```{r}
+# --- Data Pre-Processing for App Performance ---
+
+# Pre-aggregate daily data for charts g5 and g6
+daily_data <- sales_data %>%
+  group_by(Campaign_Platform, Date) %>%
+  summarise(
+    Total_Revenue = sum(Revenue),
+    Total_Traffic = sum(Traffic_on_Site)
+  )
+
+# Get date range for the slider
+min_date <- min(daily_data$Date)
+max_date <- max(daily_data$Date)
+
+# Columns for Categorical Select
+categories <- unique(sales_data$Campaign_Platform)
+```
+
+## saving files for PRELOADED DATA IN SHINY
+```{r}
+data_list <- list(
+  sales_data = sales_data,
+  daily_data = daily_data,
+  min_date = min_date,
+  max_date = max_date,
+  categories = categories,
+  current_theme = current_theme
+)
+
+saveRDS(data_list, file = "../_data/preloaded_sales_data.rds")
+# To read the data back in your Shiny app, use:
+preloaded_data <- read_rds("../_data/preloaded_sales_data.rds")
+# # Access list elements into environment:
+# sales_data <- preloaded_data$sales_data
+# daily_data <- preloaded_data$daily_data
+# min_date <- preloaded_data$min_date
+# max_date <- preloaded_data$max_date
+# categories <- preloaded_data$categories
+.base_colors <- preloaded_data$current_theme$base_colors
+theme_cta_resize <- preloaded_data$current_theme$theme_cta_resize
+```
+
+
+
+```{r}
+# --- 1. Define Parameters ---
+
+# Set the start and end dates for the dataset.
+start_date <- as.Date("2022-01-01")
+end_date <- as.Date("2025-09-26")
+
+# List of course names to be included in the dataset.
+course_names <- c(
+  "75-Hr. PA Sales Pre-Licensing Course Only Package",
+  "20-Hour Mortage Broker Education",
+  "Appraisers State Exam",
+  "Outsmartimg the 20215 Housing Market",
+  "Real Estate Introduction",
+  "Rental vs Sales - Defining Your Path",
+  "Transition from Home Real Estate to Commerical Real Estate"
+)
+
+# List of promotions and their application probability.
+promotions <- c("30% Off", "40% Off", "50% Off", "None")
+promo_probabilities <- c(0.25, 0.20, 0.15, 0.40)
+
+# List of campaign platforms and their usage probability.
+platforms <- c("Email", "LinkedIn", "Facebook", "Conference", "Direct")
+platform_probabilities <- c(0.30, 0.20, 0.20, 0.10, 0.20)
+
+# Define the total number of records to generate.
+# Let's create about 5 records per day on average.
+date_sequence <- seq(from = start_date, to = end_date, by = "day")
+number_of_records <- length(date_sequence) * 5
+
+
+# --- 2. Generate Base Data Frame ---
+
+# Create a tibble (a modern data frame) with random assignments.
+sales_data <- tibble(
+  Date = sample(date_sequence, number_of_records, replace = TRUE),
+  Product_Name = sample(course_names, number_of_records, replace = TRUE),
+  Promotion_Applied = sample(promotions, number_of_records, replace = TRUE, prob = promo_probabilities),
+  Professions = sample(c("Real Estate Agent", "Mortgage Broker", "Appraiser", "Other"), number_of_records, replace = TRUE),
+  Line_of_Business = sample(c("Commerical", "Residential", "Private", "Government", "Other"), number_of_records, replace = TRUE),
+  Traffic_on_Site = sample(100:1000, number_of_records, replace = TRUE),
+  Status = sample(c("Pre-Licensing", "Continuing Education", "Other"), prob = c(.45,.45,.1), number_of_records, replace = TRUE),
+  Campaign_Platform = sample(platforms, number_of_records, replace = TRUE, prob = platform_probabilities),
+  Tactic_Testing = sample(c("A", "B", "C"), number_of_records, replace = TRUE)
+) %>% 
+  mutate(
+    Promotion_Rate = as.numeric(gsub(x = Promotion_Applied, pattern = "% Off", ""))/100,
+    Course_Cost = case_when(
+      Product_Name == "75-Hr. PA Sales Pre-Licensing Course Only Package" ~ 7500,
+      Product_Name == "20-Hour Mortage Broker Education" ~ 2000,
+      Product_Name == "Appraisers State Exam" ~ 750,
+      Product_Name == "Outsmartimg the 20215 Housing Market" ~ 1000,
+      Product_Name == "Real Estate Introduction" ~ 1500,
+      Product_Name == "Rental vs Sales - Defining Your Path" ~ 200,
+      Product_Name == "Transition from Home Real Estate to Commerical Real Estate" ~ 750,
+      TRUE ~ 0
+    ),
+    Cost_Yeild = round(Course_Cost*Promotion_Rate, 2))
+
+```
+
+```{r}
+sales_data
+```
+
+
+# --- 3. Augment Data and Add Realistic Logic ---
+
+```{r}
+# Use the 'dplyr' library's pipe operator (%>%) for clean data transformation.
+sales_data <- sales_data %>%
+  # Arrange the data by date for chronological order.
+  arrange(Date) %>%
+  # Add new columns based on existing data.
+  mutate(
+    # Derive the day of the week from the 'Date' column.
+    Day_of_Week = wday(Date, label = TRUE, abbr = FALSE),
+    
+    # Generate a random campaign cost for each entry.
+    Campaign_Cost = round(runif(n(), min = 50, max = 500), 2),
+    
+    # Generate a random number of leads.
+    Leads = sample(5:40, n(), replace = TRUE),
+    
+    # --- Simulate Sales with Weighted Logic ---
+    # Create multipliers to make data more realistic.
+    # e.g., '50% Off' promotion is more effective, 'Direct' platform converts better.
+    promo_effect = case_when(
+      Promotion_Applied == "50% Off" ~ 1.5,
+      Promotion_Applied == "40% Off" ~ 1.3,
+      Promotion_Applied == "30% Off" ~ 1.15,
+      TRUE ~ 0.8 # 'None'
+    ),
+    platform_effect = case_when(
+      Campaign_Platform == "Direct" ~ 1.4,
+      Campaign_Platform == "Conference" ~ 1.3,
+      Campaign_Platform == "LinkedIn" ~ 1.1,
+      TRUE ~ 1.0 # Facebook/Email
+    ),
+    
+    # Calculate sales based on leads and the effect multipliers.
+    # A base conversion rate is randomized between 5% and 15%.
+    Sales = floor(Leads * runif(n(), min=0.05, max=0.15) * promo_effect * platform_effect),
+    
+    # CRITICAL: Ensure sales never exceed the number of leads.
+    Sales = pmin(Leads, Sales),
+    
+    # Calculate the final conversion rate.
+    Conversion_Rate = round((Sales / Leads) * 100, 2)
+  ) #%>%
+  # # --- 4. Finalize the Data Frame ---
+  # # Select and reorder columns for the final output.
+  # select(
+  #   Date,
+  #   Day_of_Week,
+  #   Product_Name,
+  #   Promotion_Applied,
+  #   Campaign_Platform,
+  #   Campaign_Cost,
+  #   Leads,
+  #   Sales,
+  #   Conversion_Rate
+  # )
+
+# --- 5. Output the Data ---
+
+# Print the first few rows to the console to verify the output.
+print(head(sales_data))
+View(sales_data)
+# Save the data frame to a CSV file in your current working directory.
+write.csv(sales_data, "../_data/sales_campaign_data.csv", row.names = FALSE)
+#save(sales_data, file = "../_data/sales_campaign_data.Rdata")
+
+cat("\nSuccessfully generated and saved sales_campaign_data.csv with", nrow(sales_data), "records.\n")
+
+```
+

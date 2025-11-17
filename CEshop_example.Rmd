@@ -1,0 +1,435 @@
+---
+title: "ceSHOP_example"
+author: "colintannand"
+date: "2025-11-14"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+
+# always_allow_html: true
+# output:
+#   rmarkdown::github_document: default
+#   always_allow_html: default
+#   output:
+#   md_document:
+#     variant: gfm
+# knit: (function(inputFile, encoding) {
+#   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../") })
+# title: "ceSHOP_example"
+# author: "colintannand"
+# date: "2025-11-14"
+
+# base_dir <- "../" # where output should default to
+# base_url <- "" # keep as is
+# fig_path <- "plot_images/" # where image output should go
+# 
+#knitr::opts_knit$set(base.dir = base_dir)
+knitr::opts_chunk$set(#fig.path = fig_path,
+                      cache.path = '../cache/',  #log files go here
+                      echo = TRUE,
+                      message=FALSE,
+                      warning=FALSE,
+                      cache = FALSE)
+```  
+
+```{r}
+#load CESHOP example data
+#load("../_data/sales_campaign_data.Rdata")
+#glimpse(sales_data)
+```
+
+# CE Shop Example VISUAL Analysis
+- Question about visualizing data
+- Creating Example Charts
+- Showing required (for R & ggplot) Data Manipulation
+
+```{r}
+# Load libraries for data manipulation, plotting, interactivity, and label formatting
+# If not installed, run: install.packages(c("tidyverse", "lubridate", "scales", "plotly"))
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(plotly)
+library(rmdformats)
+```
+
+## Setup
+1. Create the psuedo-data
+2. Initialize a consistent branded theme (color set)
+
+### Create Example Data
+```{r}
+
+# Set the start and end dates for the dataset.
+start_date <- as.Date("2022-01-01")
+end_date <- as.Date("2025-09-26")
+
+# List of course names to be included in the dataset.
+course_names <- c(
+  "75-Hr. PA Sales Pre-Licensing Course Only Package",
+  "20-Hour Mortage Broker Education",
+  "Appraisers State Exam",
+  "Outsmartimg the 20215 Housing Market",
+  "Real Estate Introduction",
+  "Rental vs Sales - Defining Your Path",
+  "Transition from Home Real Estate to Commerical Real Estate"
+)
+
+# List of promotions and their application probability.
+promotions <- c("30% Off", "40% Off", "50% Off", "None")
+promo_probabilities <- c(0.25, 0.20, 0.15, 0.40)
+
+# List of campaign platforms and their usage probability.
+platforms <- c("Email", "LinkedIn", "Facebook", "Conference", "Direct")
+platform_probabilities <- c(0.30, 0.20, 0.20, 0.10, 0.20)
+
+# Define the total number of records to generate.
+date_sequence <- seq(from = start_date, to = end_date, by = "day")
+number_of_records <- length(date_sequence) * 5
+
+# Create a tibble (a modern data frame) with random assignments.
+sales_data <- tibble(
+  Date = sample(date_sequence, number_of_records, replace = TRUE),
+  Product_Name = sample(course_names, number_of_records, replace = TRUE),
+  Promotion_Applied = sample(promotions, number_of_records, replace = TRUE, prob = promo_probabilities),
+  Professions = sample(c("Real Estate Agent", "Mortgage Broker", "Appraiser", "Other"), number_of_records, replace = TRUE),
+  Line_of_Business = sample(c("Commerical", "Residential", "Private", "Government", "Other"), number_of_records, replace = TRUE),
+  Traffic_on_Site = sample(100:1000, number_of_records, replace = TRUE),
+  Status = sample(c("Pre-Licensing", "Continuing Education", "Other"), prob = c(.45, .45, .1), number_of_records, replace = TRUE),
+  Campaign_Platform = sample(platforms, number_of_records, replace = TRUE, prob = platform_probabilities),
+  Tactic_Testing = sample(c("A", "B", "C"), number_of_records, replace = TRUE)
+) %>%
+  mutate(
+    # Fix Promotion_Rate calculation for "None"
+    Promotion_Rate = ifelse(Promotion_Applied == "None", 0,
+      as.numeric(gsub(x = Promotion_Applied, pattern = "% Off", "")) / 100
+    ),
+    Course_Cost = case_when(
+      Product_Name == "75-Hr. PA Sales Pre-Licensing Course Only Package" ~ 7500,
+      Product_Name == "20-Hour Mortage Broker Education" ~ 2000,
+      Product_Name == "Appraisers State Exam" ~ 750,
+      Product_Name == "Outsmartimg the 20215 Housing Market" ~ 1000,
+      Product_Name == "Real Estate Introduction" ~ 1500,
+      Product_Name == "Rental vs Sales - Defining Your Path" ~ 200,
+      Product_Name == "Transition from Home Real Estate to Commerical Real Estate" ~ 750,
+      TRUE ~ 0
+    ),
+    # Calculate Cost_Yeild (discount)
+    Cost_Yeild = round(Course_Cost * Promotion_Rate, 2),
+    # Create the new Revenue column (Price paid by customer)
+    Revenue = Course_Cost * (1 - Promotion_Rate)
+  )
+```
+
+### Branded Themeing for R
+```{r}
+# Define branded color sets
+.base_colors <- list(
+  "primary_blues" = c("#005287", "#00354e", "#0278af", "#5a5c5d", "#c1c2c4",  "#5a5c5d", "#c1c2c4", "#5a5c5d", "#292323", "#292323"),
+  "primary_reds" = c(
+    "#c42032", # visitech red (or close....)
+    "#850101", #: A deep, dark red.
+    "#6D2B2C", #: A more muted, desaturated red.
+    "#614041", # A reddish-brown or dusky rose color.
+    "#555556", # A medium, neutral grey.
+    "#5a5c5d",
+    "#5a5c5d",
+    "#5a5c5d",
+    "#292323",
+    "#292323",
+    "#292323"
+  ), # A very dark grey, close to black
+  "combined_colors" = c(
+    "#005287", "#c42032",
+    "#00354e", "#850101",
+    "#0278af", "#6D2B2C",
+    "#c1c2c4", "#5a5c5d",
+    "#685786", "#ffcc05",
+    "#0278af", "#00354e"
+  )
+)
+
+# Custom ggplot theme
+theme_cta_resize <- function() {
+  theme_minimal(base_family = "Arial") +
+    theme(
+      plot.title = element_text(
+        family = "Arial", face = "bold", size = rel(1.25), color = "#005287", hjust = 0.5, margin = margin(b = 10)
+      ),
+      plot.subtitle = element_text(
+        family = "Arial", size = rel(1), color = "#5a5c5d", hjust = 0.5, margin = margin(b = 10)
+      ),
+      axis.title = element_text(
+        family = "Arial", size = rel(.9), color = "#005287", face = "bold"
+      ),
+      axis.text = element_text(
+        family = "Arial", size = rel(.75), color = "#5a5c5d"
+      ),
+      legend.title = element_text(
+        family = "Arial", size = rel(.75), color = "#005287", face = "bold"
+      ),
+      legend.text = element_text(
+        family = "Arial", size = rel(.65), color = "#5a5c5d"
+      ),
+      panel.background = element_rect(fill = "#ffffff", color = NA),
+      panel.grid.major = element_line(color = "#c1c2c4"),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#0278af", color = "#005287"),
+      strip.text = element_text(family = "Arial", size = rel(.9), color = "#ffffff", face = "bold")
+    )
+}
+```
+
+
+
+# Visual Analysis Section
+ - Analysis based on described data from *The CE Shop*
+ - Created by Colin T. Annand
+ 
+## Charts
+### Monthly Revenue Over Time (Interactive Line Chart) ---
+
+```{r}
+# Prepare data: aggregate revenue by month
+monthly_revenue <- sales_data %>%
+  mutate(Month = floor_date(Date, "month")) %>%
+  group_by(Month) %>%
+  summarise(Total_Revenue = sum(Revenue))
+
+# Create ggplot object
+g1 <- monthly_revenue %>%
+  ggplot(aes(x = Month, y = Total_Revenue, text = paste(
+    "Month: ", format(Month, "%b %Y"),
+    "<br>Revenue: ", dollar(Total_Revenue)
+  ))) +
+  geom_line(color = .base_colors$primary_blues[1], size = 1) +
+  geom_point(color = .base_colors$primary_blues[1], size = 2) +
+  labs(
+    title = "Monthly Revenue Over Time",
+    subtitle = "Total sales revenue aggregated by month",
+    x = "Month",
+    y = "Total Revenue"
+  ) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b %Y") +
+  theme_cta_resize()
+
+# Convert to interactive plotly chart
+# To view, simply type 'p1' in the R console
+p1 <- ggplotly(g1, tooltip = "text")
+
+# Print the static version
+print(g1)
+```
+
+
+### Total Revenue by Product (Horizontal Bar Chart) ---
+
+```{r}
+# Create plot
+g2 <- sales_data %>%
+  group_by(Product_Name) %>%
+  summarise(Total_Revenue = sum(Revenue)) %>%
+  # Reorder Product_Name by Total_Revenue for a sorted chart
+  ggplot(aes(x = Total_Revenue, y = reorder(Product_Name, Total_Revenue), fill = Product_Name)) +
+  geom_col() +
+  labs(
+    title = "Total Revenue by Product",
+    subtitle = "Revenue generated from each course",
+    x = "Total Revenue",
+    y = "Product"
+  ) +
+  scale_x_continuous(labels = dollar_format()) +
+  scale_fill_manual(values = .base_colors$primary_blues) +
+  theme_cta_resize() +
+  theme(legend.position = "none") # Remove legend as y-axis is clear
+
+# Print the static chart
+print(g2)
+```
+
+
+### Sales Volume by Campaign Platform (Bar Chart) ---
+
+```{r}
+# Create plot
+g3 <- sales_data %>%
+  # Count occurrences of each platform
+  count(Campaign_Platform) %>%
+  ggplot(aes(x = reorder(Campaign_Platform, -n), y = n, fill = Campaign_Platform)) +
+  geom_col() +
+  geom_text(aes(label = comma(n)), vjust = -0.5, color = "#00354e", size = 3.5) +
+  labs(
+    title = "Sales Volume by Campaign Platform",
+    subtitle = "Total number of sales attributed to each platform",
+    x = "Campaign Platform",
+    y = "Number of Sales"
+  ) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_manual(values = .base_colors$primary_reds) +
+  theme_cta_resize() +
+  theme(legend.position = "none")
+
+# Print the static chart
+print(g3)
+```
+
+
+```{r out.width="100%"}
+# Create plot
+g3a <- sales_data %>%
+  group_by(Campaign_Platform, Promotion_Applied) %>%
+  summarise(Total_Sales = n(), .groups = 'drop') %>%
+  arrange(Campaign_Platform, Promotion_Applied, desc(Total_Sales)) %>%
+  ggplot(aes(x = Campaign_Platform, y = Total_Sales, fill = Promotion_Applied)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(
+    aes(label = comma(Total_Sales)),
+    vjust = -0.5,
+    color = "#00354e",
+    size = 3.5,
+    # Add position_dodge to align labels with the bars
+    position = position_dodge(width = 0.9) 
+  ) +
+  labs(
+    title = "Sales Volume by Campaign Platform",
+    subtitle = "Total number of sales attributed to each platform",
+    x = "Campaign Platform",
+    y = "Number of Sales"
+  ) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_manual(values = .base_colors$primary_reds) +
+  theme_cta_resize()
+  #theme(legend.position = "none")
+
+# Print the static chart
+print(g3a)
+```
+#### Notes:
+- Of particular importance here, is the 
+
+### Revenue by Product and Business Status (Faceted Bar Chart) ---
+
+```{r}
+# Create plot
+g4 <- sales_data %>%
+  #mutate Product Name, to wrap strings
+  mutate(Product_Name = str_wrap(Product_Name, width = 25)) %>%
+  group_by(Product_Name, Status) %>%
+  summarise(Total_Revenue = sum(Revenue)) %>%
+  ggplot(aes(x = Total_Revenue, y = reorder(Product_Name, Total_Revenue), fill = Status)) +
+  geom_col() +
+  # Create separate charts for each "Status"
+  facet_wrap(~Status) +
+  labs(
+    title = "Revenue by Product, Segmented by Business Status",
+    subtitle = "Comparing product performance across different customer segments",
+    x = "Total Revenue",
+    y = "Product"
+  ) +
+  scale_x_continuous(labels = dollar_format(scale = .001, suffix = "K")) +
+  scale_fill_manual(values = .base_colors$primary_blues) +
+  theme_cta_resize() +
+  theme(
+    legend.position = "none", # Facet titles make legend redundant
+    axis.text.x = element_text(angle = 45, hjust = 1) # Angle text for readability
+  )
+
+# Print the static chart
+print(g4)
+```
+
+
+### Daily Revenue vs. Daily Traffic (Interactive Scatter Plot) ---
+
+```{r}
+# Prepare data: aggregate by day
+daily_data <- sales_data %>%
+  group_by(Date) %>%
+  summarise(
+    Total_Revenue = sum(Revenue),
+    Total_Traffic = sum(Traffic_on_Site)
+  )
+
+# Create ggplot object
+g5 <- daily_data %>%
+  ggplot(aes(x = Total_Traffic, y = Total_Revenue, text = paste(
+    "Date: ", Date,
+    "<br>Traffic: ", comma(Total_Traffic),
+    "<br>Revenue: ", dollar(Total_Revenue)
+  ))) +
+  geom_point(color = .base_colors$primary_blues[3], alpha = 0.6) +
+  labs(
+    title = "Daily Revenue vs. Daily Traffic",
+    subtitle = "Each point represents one day",
+    x = "Total Daily Traffic on Site",
+    y = "Total Daily Revenue"
+  ) +
+  scale_x_continuous(labels = comma_format()) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme_cta_resize()
+
+# Convert to interactive plotly chart
+# To view, simply type 'p5' in the R console
+p5 <- ggplotly(g5, tooltip = "text")
+
+# Print the static version
+ggplotly(g5)
+```
+
+### Daily Revenue - Last Two Weeks (Lollipop Chart) ---
+
+```{r fig.width=16, fig.height=10}
+# Prepare data: filter daily data for the last 14 days
+last_5_days_data <- sales_data %>%
+  filter(Date >= (max(sales_data$Date) - days(7))) %>%
+  group_by("Date" = lubridate::wday(Date), Promotion_Applied) %>%
+  summarise(
+    Total_Revenue = sum(Revenue),
+    Total_Traffic = sum(Traffic_on_Site)
+  ) %>% ungroup() %>% 
+  mutate(Date_Factor = factor(Date, levels = c("1", "2", "3", "4", "5", "6", "7"),
+                              labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+#last_5_days_data <- daily_data_GROUPBY_promo %>%
+#  filter(Date >= (max(daily_data_GROUPBY_promo$Date) - days(5))) %>%
+#  arrange(Date)
+
+# Create plot
+g6 <- last_5_days_data %>%
+  ggplot(aes(x = Promotion_Applied, y = Total_Revenue, color = Promotion_Applied)) +
+  # Create the "stick" of the lollipop
+  geom_vline(
+    aes(xintercept = Promotion_Applied, y = 0, yend = Total_Revenue),
+    #color = .base_colors$primary_blues[4],
+    size = 0.75
+  ) +
+  # Create the "candy" of the lollipop
+  geom_point(#color = .base_colors$primary_blues[1], 
+    size = 4) +
+  labs(
+    title = "Daily Revenue: Last 5 Days",
+    subtitle = "A detailed look at recent sales performance",
+    x = "Date",
+    y = "Total Revenue"
+  ) +
+  scale_y_continuous(labels = dollar_format()) +
+  #scale_x_date(date_labels = "%b %d") + # Format date as "Jan 01"
+  theme_cta_resize() +
+  theme(
+    panel.grid.major.x = element_blank() # Remove vertical gridlines
+  )+
+  facet_wrap(~Date_Factor)+
+  scale_color_manual(values = .base_colors$combined_colors)
+
+# Print the static chart
+ggplotly(g6)
+```
