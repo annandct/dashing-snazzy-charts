@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitech for The CE Shop - Sample Data Explorer</title>
+    
+    <style>
+        /**
+         * Make the page itself take up the full screen with no margins
+         */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling on the main page */
+        }
+
+        /**
+         * Make the iframe fill the entire viewport
+         */
+        #shiny-iframe {
+            position: fixed; /* Position relative to the browser window */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none; /* Remove the default iframe border */
+        }
+    </style>
+</head>
+<body>
+    <iframe 
+        id="shiny-iframe"
+        src="https://github.com/annandct/dashing-snazzy-charts/docs/index.html">
+    </iframe>
+</body>
+</html>
