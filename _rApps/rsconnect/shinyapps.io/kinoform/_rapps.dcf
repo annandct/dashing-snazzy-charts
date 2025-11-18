@@ -5,6 +5,8 @@ account: kinoform
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16094681
-bundleId: 11192621
+bundleId: 11192952
 url: https://kinoform.shinyapps.io/_rapps/
 version: 1
+asMultiple: FALSE
+asStatic: FALSE

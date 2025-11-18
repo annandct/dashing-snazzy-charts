@@ -1,114 +1,115 @@
 # --- 1. LOAD ALL LIBRARIES ---
 # Load libraries for Shiny, data manipulation, plotting, interactivity, and label formatting
 library(shiny)
+library(dplyr)
 #library(tidyverse)
 library(ggplot2)
-#library(lubridate)
+library(lubridate)
 library(scales)
 library(plotly)
 
 # --- 2. GLOBAL SCRIPT: DATA & THEME (Runs Once) ---
 # 
-# # --- Data Generation (User-Provided) ---
-# start_date <- as.Date("2022-01-01")
-# end_date <- as.Date("2025-09-26")
-# course_names <- c(
-#   "75-Hr. PA Sales Pre-Licensing Course Only Package",
-#   "20-Hour Mortage Broker Education",
-#   "Appraisers State Exam",
-#   "Outsmartimg the 20215 Housing Market",
-#   "Real Estate Introduction",
-#   "Rental vs Sales - Defining Your Path",
-#   "Transition from Home Real Estate to Commerical Real Estate"
-# )
-# promotions <- c("30% Off", "40% Off", "50% Off", "None")
-# promo_probabilities <- c(0.25, 0.20, 0.15, 0.40)
-# platforms <- c("Email", "LinkedIn", "Facebook", "Conference", "Direct")
-# platform_probabilities <- c(0.30, 0.20, 0.20, 0.10, 0.20)
-# date_sequence <- seq(from = start_date, to = end_date, by = "day")
-# number_of_records <- length(date_sequence) * 5
-# 
-# sales_data <- tibble(
-#   Date = sample(date_sequence, number_of_records, replace = TRUE),
-#   Product_Name = sample(course_names, number_of_records, replace = TRUE),
-#   Promotion_Applied = sample(promotions, number_of_records, replace = TRUE, prob = promo_probabilities),
-#   Professions = sample(c("Real Estate Agent", "Mortgage Broker", "Appraiser", "Other"), number_of_records, replace = TRUE),
-#   Line_of_Business = sample(c("Commerical", "Residential", "Private", "Government", "Other"), number_of_records, replace = TRUE),
-#   Traffic_on_Site = sample(100:1000, number_of_records, replace = TRUE),
-#   Status = sample(c("Pre-Licensing", "Continuing Education", "Other"), prob = c(.45, .45, .1), number_of_records, replace = TRUE),
-#   Campaign_Platform = sample(platforms, number_of_records, replace = TRUE, prob = platform_probabilities),
-#   Tactic_Testing = sample(c("A", "B", "C"), number_of_records, replace = TRUE)
-# ) %>%
-#   mutate(
-#     Promotion_Rate = ifelse(Promotion_Applied == "None", 0,
-#                             as.numeric(gsub(x = Promotion_Applied, pattern = "% Off", "")) / 100
-#     ),
-#     Course_Cost = case_when(
-#       Product_Name == "75-Hr. PA Sales Pre-Licensing Course Only Package" ~ 7500,
-#       Product_Name == "20-Hour Mortage Broker Education" ~ 2000,
-#       Product_Name == "Appraisers State Exam" ~ 750,
-#       Product_Name == "Outsmartimg the 20215 Housing Market" ~ 1000,
-#       Product_Name == "Real Estate Introduction" ~ 1500,
-#       Product_Name == "Rental vs Sales - Defining Your Path" ~ 200,
-#       Product_Name == "Transition from Home Real Estate to Commerical Real Estate" ~ 750,
-#       TRUE ~ 0
-#     ),
-#     Cost_Yeild = round(Course_Cost * Promotion_Rate, 2),
-#     Revenue = Course_Cost * (1 - Promotion_Rate)
-#   )
-# 
-# # --- Themeing (User-Provided) ---
-# .base_colors <- list(
-#   "primary_blues" = c("#005287", "#00354e", "#0278af", "#5a5c5d", "#c1c2c4"),
-#   "primary_reds" = c("#c42032", "#850101", "#6D2B2C", "#614041", "#555556", "#292323"),
-#   "combined_colors" = c("#005287", "#c42032", "#00354e", "#850101", "#0278af", "#6D2B2C", "#c1c2c4", "#5a5c5d", "#685786", "#ffcc05", "#0278af", "#00354e")
-# )
-# 
-# theme_cta_resize <- function() {
-#   theme_minimal(base_family = "Arial") +
-#     theme(
-#       plot.title = element_text(family = "Arial", face = "bold", size = rel(1.25), color = "#005287", hjust = 0.5, margin = margin(b = 10)),
-#       plot.subtitle = element_text(family = "Arial", size = rel(1), color = "#5a5c5d", hjust = 0.5, margin = margin(b = 10)),
-#       axis.title = element_text(family = "Arial", size = rel(.9), color = "#005287", face = "bold"),
-#       axis.text = element_text(family = "Arial", size = rel(.75), color = "#5a5c5d"),
-#       legend.title = element_text(family = "Arial", size = rel(.75), color = "#005287", face = "bold"),
-#       legend.text = element_text(family = "Arial", size = rel(.65), color = "#5a5c5d"),
-#       panel.background = element_rect(fill = "#ffffff", color = NA),
-#       panel.grid.major = element_line(color = "#c1c2c4"),
-#       panel.grid.minor = element_blank(),
-#       strip.background = element_rect(fill = "#0278af", color = "#005287"),
-#       strip.text = element_text(family = "Arial", size = rel(.9), color = "#ffffff", face = "bold")
-#     )
-# }
+# --- Data Generation (User-Provided) ---
+start_date <- as.Date("2022-01-01")
+end_date <- as.Date("2025-09-26")
+course_names <- c(
+  "75-Hr. PA Sales Pre-Licensing Course Only Package",
+  "20-Hour Mortage Broker Education",
+  "Appraisers State Exam",
+  "Outsmartimg the 20215 Housing Market",
+  "Real Estate Introduction",
+  "Rental vs Sales - Defining Your Path",
+  "Transition from Home Real Estate to Commerical Real Estate"
+)
+promotions <- c("30% Off", "40% Off", "50% Off", "None")
+promo_probabilities <- c(0.25, 0.20, 0.15, 0.40)
+platforms <- c("Email", "LinkedIn", "Facebook", "Conference", "Direct")
+platform_probabilities <- c(0.30, 0.20, 0.20, 0.10, 0.20)
+date_sequence <- seq(from = start_date, to = end_date, by = "day")
+number_of_records <- length(date_sequence) * 5
 
-# Data Loading from RDS for speed
-preloaded_data <- readRDS("preloaded_sales_data.rds")
-# Access list elements into environment:
-sales_data <- preloaded_data$sales_data
-daily_data <- preloaded_data$daily_data
-min_date <- preloaded_data$min_date
-max_date <- preloaded_data$max_date
-categories <- preloaded_data$categories
-.base_colors <- preloaded_data$current_theme$base_colors
-theme_cta_resize <- preloaded_data$current_theme$theme_cta_resize
+sales_data <- tibble(
+  Date = sample(date_sequence, number_of_records, replace = TRUE),
+  Product_Name = sample(course_names, number_of_records, replace = TRUE),
+  Promotion_Applied = sample(promotions, number_of_records, replace = TRUE, prob = promo_probabilities),
+  Professions = sample(c("Real Estate Agent", "Mortgage Broker", "Appraiser", "Other"), number_of_records, replace = TRUE),
+  Line_of_Business = sample(c("Commerical", "Residential", "Private", "Government", "Other"), number_of_records, replace = TRUE),
+  Traffic_on_Site = sample(100:1000, number_of_records, replace = TRUE),
+  Status = sample(c("Pre-Licensing", "Continuing Education", "Other"), prob = c(.45, .45, .1), number_of_records, replace = TRUE),
+  Campaign_Platform = sample(platforms, number_of_records, replace = TRUE, prob = platform_probabilities),
+  Tactic_Testing = sample(c("A", "B", "C"), number_of_records, replace = TRUE)
+) %>%
+  mutate(
+    Promotion_Rate = ifelse(Promotion_Applied == "None", 0,
+                            as.numeric(gsub(x = Promotion_Applied, pattern = "% Off", "")) / 100
+    ),
+    Course_Cost = case_when(
+      Product_Name == "75-Hr. PA Sales Pre-Licensing Course Only Package" ~ 7500,
+      Product_Name == "20-Hour Mortage Broker Education" ~ 2000,
+      Product_Name == "Appraisers State Exam" ~ 750,
+      Product_Name == "Outsmartimg the 20215 Housing Market" ~ 1000,
+      Product_Name == "Real Estate Introduction" ~ 1500,
+      Product_Name == "Rental vs Sales - Defining Your Path" ~ 200,
+      Product_Name == "Transition from Home Real Estate to Commerical Real Estate" ~ 750,
+      TRUE ~ 0
+    ),
+    Cost_Yeild = round(Course_Cost * Promotion_Rate, 2),
+    Revenue = Course_Cost * (1 - Promotion_Rate)
+  )
+
+# --- Themeing (User-Provided) ---
+.base_colors <- list(
+  "primary_blues" = c("#005287", "#00354e", "#0278af", "#5a5c5d", "#c1c2c4"),
+  "primary_reds" = c("#c42032", "#850101", "#6D2B2C", "#614041", "#555556", "#292323"),
+  "combined_colors" = c("#005287", "#c42032", "#00354e", "#850101", "#0278af", "#6D2B2C", "#c1c2c4", "#5a5c5d", "#685786", "#ffcc05", "#0278af", "#00354e")
+)
+
+theme_cta_resize <- function() {
+  theme_minimal(base_family = "Arial") +
+    theme(
+      plot.title = element_text(family = "Arial", face = "bold", size = rel(1.25), color = "#005287", hjust = 0.5, margin = margin(b = 10)),
+      plot.subtitle = element_text(family = "Arial", size = rel(1), color = "#5a5c5d", hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(family = "Arial", size = rel(.9), color = "#005287", face = "bold"),
+      axis.text = element_text(family = "Arial", size = rel(.75), color = "#5a5c5d"),
+      legend.title = element_text(family = "Arial", size = rel(.75), color = "#005287", face = "bold"),
+      legend.text = element_text(family = "Arial", size = rel(.65), color = "#5a5c5d"),
+      panel.background = element_rect(fill = "#ffffff", color = NA),
+      panel.grid.major = element_line(color = "#c1c2c4"),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#0278af", color = "#005287"),
+      strip.text = element_text(family = "Arial", size = rel(.9), color = "#ffffff", face = "bold")
+    )
+}
+
+# # Data Loading from RDS for speed
+# preloaded_data <- readRDS("preloaded_sales_data.rds")
+# # Access list elements into environment:
+# sales_data <- preloaded_data$sales_data
+# daily_data <- preloaded_data$daily_data
+# min_date <- preloaded_data$min_date
+# max_date <- preloaded_data$max_date
+# categories <- preloaded_data$categories
+# .base_colors <- preloaded_data$current_theme$base_colors
+# theme_cta_resize <- preloaded_data$current_theme$theme_cta_resize
 
 
 # # --- Data Pre-Processing for App Performance ---
 # 
-# # Pre-aggregate daily data for charts g5 and g6
-# daily_data <- sales_data %>%
-#   group_by(Campaign_Platform, Date) %>%
-#   summarise(
-#     Total_Revenue = sum(Revenue),
-#     Total_Traffic = sum(Traffic_on_Site)
-#   )
-# 
-# # Get date range for the slider
-# min_date <- min(daily_data$Date)
-# max_date <- max(daily_data$Date)
-# 
-# # Columns for Categorical Select
-# categories <- unique(sales_data$Campaign_Platform)
+# Pre-aggregate daily data for charts g5 and g6
+daily_data <- sales_data %>%
+  group_by(Campaign_Platform, Date) %>%
+  summarise(
+    Total_Revenue = sum(Revenue),
+    Total_Traffic = sum(Traffic_on_Site)
+  )
+
+# Get date range for the slider
+min_date <- min(daily_data$Date)
+max_date <- max(daily_data$Date)
+
+# Columns for Categorical Select
+categories <- unique(sales_data$Campaign_Platform)
 
 # --- 3. SHINY USER INTERFACE (UI) ---
 ui <- fluidPage(
@@ -221,8 +222,8 @@ server <- function(input, output) {
         "Month: ", format(Month, "%b %Y"),
         "<br>Revenue: ", dollar(Total_Revenue)
       ))) +
-      geom_line()+#color = .base_colors$primary_blues[1], size = 1) +
-      geom_point()+#color = .base_colors$primary_blues[1], size = 2) +
+      geom_line()+#color = .base_colors$primary_blues[1], lwd = 1) +
+      geom_point()+#color = .base_colors$primary_blues[1], lwd = 2) +
       labs(
         title = "Monthly Revenue Over Time",
         subtitle = "Total sales revenue aggregated by month for the selected period",
@@ -360,17 +361,25 @@ server <- function(input, output) {
         )
     } else {
       # If range is acceptable, build the lollipop chart
+      dodge_width <- 0.2 
+      
       g6 <- plot_data %>%
-        ggplot(aes(x = Date, y = Total_Revenue, text = paste(
+        ggplot(aes(x = Date, y = Total_Revenue, color = Campaign_Platform, text = paste(
           "Date: ", Date,
-          "<br>Revenue: ", dollar(Total_Revenue)
+          "<br>Revenue: ", dollar(Total_Revenue),
+          "Platform: ", Campaign_Platform
         ))) +
         geom_segment(
+          # Add position_dodge() here
           aes(x = Date, xend = Date, y = 0, yend = Total_Revenue),
-          color = .base_colors$primary_blues[4],
-          size = 0.75
+          lwd = 0.75,
+          position = position_dodge(width = dodge_width) 
         ) +
-        geom_point(color = .base_colors$primary_blues[1], size = 4) +
+        geom_point(
+          # Add position_dodge() here as well
+          lwd = 4,
+          position = position_dodge(width = dodge_width) 
+        ) +
         labs(
           title = "Daily Revenue Detail: Last 14 Days",
           subtitle = "Revenue for each day in the selected range",
@@ -380,9 +389,38 @@ server <- function(input, output) {
         scale_y_continuous(labels = dollar_format()) +
         scale_x_date(date_labels = "%b %d") +
         theme_cta_resize() +
+        scale_color_manual(values = .base_colors$combined_colors) +
         theme(panel.grid.major.x = element_blank())
       
       ggplotly(g6, tooltip = "text")
+      
+      # g6 <- plot_data %>%
+      #   ggplot(aes(x = Date, y = Total_Revenue, color = Campaign_Platform, text = paste(
+      #     "Date: ", Date,
+      #     "<br>Revenue: ", dollar(Total_Revenue),
+      #     "Platform: ", Campaign_Platform
+      #   ))) +
+      #   geom_segment(
+      #     aes(x = Date, xend = Date, y = 0, yend = Total_Revenue),
+      #     #color = .base_colors$primary_blues[4],
+      #     lwd = 0.75
+      #   ) +
+      #   geom_point(
+      #     #color = .base_colors$primary_blues[1], 
+      #     lwd = 4) +
+      #   labs(
+      #     title = "Daily Revenue Detail: Last 14 Days",
+      #     subtitle = "Revenue for each day in the selected range",
+      #     x = "Date",
+      #     y = "Total Revenue"
+      #   ) +
+      #   scale_y_continuous(labels = dollar_format()) +
+      #   scale_x_date(date_labels = "%b %d") +
+      #   theme_cta_resize() +
+      #   scale_color_manual(values = .base_colors$combined_colors) +
+      #   theme(panel.grid.major.x = element_blank())
+      # 
+      # ggplotly(g6, tooltip = "text")
     }
   })
   
