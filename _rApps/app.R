@@ -350,44 +350,78 @@ server <- function(input, output) {
     
     # --- UX Guardrail ---
     # Only render the lollipop chart if 60 days or fewer are selected.
-    if (nrow(plot_data) > 60) {
+    if (nrow(plot_data) > 120) {
       # Use plotly_empty to create a placeholder with a message
       plotly_empty() %>%
         layout(
           title = list(
-            text = "Please select a smaller date range (<= 60 days)<br>to view the Daily Revenue Detail chart.",
+            text = "Please select a smaller date range (<= 31 days) or fewer categories <br>to view the Daily Revenue Detail chart.",
             font = list(color = "#005287")
           )
         )
-    } else {
+    } else { 
       # If range is acceptable, build the lollipop chart
-      dodge_width <- 0.2 
       
-      g6 <- plot_data %>%
-        ggplot(aes(x = Date, y = Total_Revenue, color = Campaign_Platform, text = paste(
-          "Date: ", Date,
-          "<br>Revenue: ", dollar(Total_Revenue),
-          "Platform: ", Campaign_Platform
-        ))) +
+      select_categories <- categories
+      # 1. Define the custom dodge function
+      
+      get_date_dodge_offsets <- function(selected_categories, spread_width = 0.6) {
+        # selected_categories: a vector of unique category names
+        # spread_width: total width of the spread in days (e.g., 0.8 = +/- 0.4)
+        n <- length(selected_categories)
+        # If only one category, no dodge needed
+        if(n == 1) return(setNames(0, selected_categories))
+        # Create a centered sequence (e.g., -0.4, -0.13, 0.13, 0.4)
+        offsets <- seq(from = -spread_width/2, to = spread_width/2, length.out = n)
+        # Return a named vector mapping Category -> Offset
+        return(setNames(offsets, selected_categories))
+      }
+      
+      # 2. Prepare the data with the offsets
+      # Ensure Campaign_Platform is a factor to maintain consistent ordering
+      platforms <- levels(factor(plot_data$Campaign_Platform))
+      dodge_map <- get_date_dodge_offsets(platforms)
+      
+      plot_data_dodged <- plot_data %>%
+        mutate(
+          # Convert Date to POSIXct (seconds) to allow fractional day addition
+          Date_Time = as.POSIXct(Date),
+          
+          # lookup the offset value
+          day_offset_val = dodge_map[as.character(Campaign_Platform)],
+          
+          # Create the dodged position: Date + (Duration in Days)
+          # 86400 seconds = 1 day. 
+          Dodged_Date = Date_Time + lubridate::duration(day_offset_val, "days")
+        )
+      
+      # Date Range
+      date_range <- as.numeric(difftime(input$dateRangeSlider[2], input$dateRangeSlider[1], units = "days"))
+      
+      # 3. Generate the Plot
+      g6 <- plot_data_dodged %>%
+        ggplot(aes(x = Dodged_Date, y = Total_Revenue, color = Campaign_Platform, 
+                   text = paste(
+                     "Date: ", Date, # Keep original date for tooltip
+                     "<br>Revenue: ", dollar(Total_Revenue),
+                     "Platform: ", Campaign_Platform
+                   ))) +
+        # Segment uses the Dodged Date for both X and Xend
         geom_segment(
-          # Add position_dodge() here
-          aes(x = Date, xend = Date, y = 0, yend = Total_Revenue),
-          lwd = 0.75,
-          position = position_dodge(width = dodge_width) 
+          aes(xend = Dodged_Date, y = 0, yend = Total_Revenue),
+          lwd = 0.75
         ) +
-        geom_point(
-          # Add position_dodge() here as well
-          lwd = 4,
-          position = position_dodge(width = dodge_width) 
-        ) +
+        # Points also use the Dodged Date (inherited from global aes)
+        geom_point(size = 4) +
         labs(
-          title = "Daily Revenue Detail: Last 14 Days",
+          title = paste("Daily Revenue Detail: Last", date_range, "Days"),
           subtitle = "Revenue for each day in the selected range",
           x = "Date",
           y = "Total Revenue"
         ) +
         scale_y_continuous(labels = dollar_format()) +
-        scale_x_date(date_labels = "%b %d") +
+        # Use datetime scale to handle the fractional days gracefully
+        scale_x_datetime(date_labels = "%b %d") + 
         theme_cta_resize() +
         scale_color_manual(values = .base_colors$combined_colors) +
         theme(panel.grid.major.x = element_blank())
