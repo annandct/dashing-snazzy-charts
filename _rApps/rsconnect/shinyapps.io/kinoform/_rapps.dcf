@@ -1,0 +1,10 @@
+name: _rapps
+title:
+username: kinoform
+account: kinoform
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16094681
+bundleId: 11192621
+url: https://kinoform.shinyapps.io/_rapps/
+version: 1

@@ -3,7 +3,7 @@
 library(shiny)
 #library(tidyverse)
 library(ggplot2)
-library(lubridate)
+#library(lubridate)
 library(scales)
 library(plotly)
 
@@ -82,7 +82,7 @@ library(plotly)
 # }
 
 # Data Loading from RDS for speed
-preloaded_data <- read_rds("../_data/preloaded_sales_data.rds")
+preloaded_data <- readRDS("../_data/preloaded_sales_data.rds")
 # Access list elements into environment:
 sales_data <- preloaded_data$sales_data
 daily_data <- preloaded_data$daily_data

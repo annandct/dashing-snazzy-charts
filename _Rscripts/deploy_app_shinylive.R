@@ -4,7 +4,7 @@
 #library(shinylive)
 #?shinylive::export
 
-shinylive::export(appdir =  "_Rscripts/",
+shinylive::export(appdir =  getwd(),
                   destdir = "../_deployedApps/",
                   template_params = list(
                     title = "The CE Shop - Sample_Dashboard",

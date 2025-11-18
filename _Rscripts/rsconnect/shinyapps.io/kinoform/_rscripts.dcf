@@ -1,0 +1,10 @@
+name: _rscripts
+title:
+username: kinoform
+account: kinoform
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16094514
+bundleId: 11192535
+url: https://kinoform.shinyapps.io/_rscripts/
+version: 1
